@@ -1,0 +1,17 @@
+# Simple Arabic patch on top of official OpenMetadata image
+# This avoids complex build issues by using the official pre-built image
+
+FROM docker.getcollate.io/openmetadata/server:1.9.11
+
+USER root
+
+# Copy Arabic language files
+COPY --chown=openmetadata:openmetadata \
+    openmetadata-ui/src/main/resources/ui/src/locale/languages/ar-sa.json \
+    /opt/openmetadata/ui/dist/locale/languages/ar-sa.json
+
+# Note: The i18next configuration changes require a full UI rebuild
+# For now, we'll just add the translation file
+# Users can manually select Arabic if their browser is set to Arabic locale
+
+USER openmetadata
