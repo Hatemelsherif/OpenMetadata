@@ -2,10 +2,16 @@
 # Stage 1: Build OpenMetadata
 FROM maven:3.9.6-eclipse-temurin-21 AS builder
 
-# Install Node.js 18 and Yarn
+# Install Node.js 18, Yarn, and build dependencies
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g yarn@1.22.18
+    apt-get install -y nodejs make g++ python3 && \
+    npm install -g yarn@1.22.18 && \
+    curl -O https://www.antlr.org/download/antlr-4.13.2-complete.jar && \
+    mkdir -p /usr/local/lib && \
+    mv antlr-4.13.2-complete.jar /usr/local/lib/ && \
+    echo '#!/bin/bash' > /usr/local/bin/antlr4 && \
+    echo 'java -Xmx500M -cp "/usr/local/lib/antlr-4.13.2-complete.jar:$CLASSPATH" org.antlr.v4.Tool "$@"' >> /usr/local/bin/antlr4 && \
+    chmod +x /usr/local/bin/antlr4
 
 # Set working directory
 WORKDIR /build
