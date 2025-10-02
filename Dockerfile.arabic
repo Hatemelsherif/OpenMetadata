@@ -1,0 +1,53 @@
+# Multi-stage Dockerfile for OpenMetadata with Arabic Language Support
+# Stage 1: Build OpenMetadata
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
+
+# Install Node.js 18 and Yarn
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g yarn@1.22.18
+
+# Set working directory
+WORKDIR /build
+
+# Copy source code
+COPY . .
+
+# Build OpenMetadata (this includes the Arabic UI changes)
+RUN mvn clean install -DskipTests
+
+# Build distribution package
+RUN mvn clean package -DskipTests -pl openmetadata-dist
+
+# Stage 2: Runtime image
+FROM alpine:3
+
+# Create openmetadata user
+RUN adduser -D openmetadata && \
+    apk update && \
+    apk upgrade && \
+    apk add --update --no-cache bash openjdk21-jre
+
+# Copy built artifacts from builder
+COPY --chown=openmetadata:openmetadata --from=builder \
+    /build/openmetadata-dist/target/openmetadata-*.tar.gz /tmp/openmetadata.tar.gz
+
+# Extract and setup OpenMetadata
+RUN tar -xzf /tmp/openmetadata.tar.gz -C /opt && \
+    rm /tmp/openmetadata.tar.gz && \
+    ln -s /opt/openmetadata-* /opt/openmetadata && \
+    chown -R openmetadata:openmetadata /opt/openmetadata*
+
+# Switch to openmetadata user
+USER openmetadata
+WORKDIR /opt/openmetadata
+
+# Expose port
+EXPOSE 8585
+
+# Copy custom startup script
+COPY --chown=openmetadata:openmetadata docker/openmetadata-start.sh ./bin/
+
+# Set entrypoint
+ENTRYPOINT ["/bin/bash"]
+CMD ["./bin/openmetadata-start.sh"]
